@@ -1,0 +1,1 @@
+<?require($_SERVER["DOCUMENT_ROOT"]."/local/modules/fandom.lotinfo/admin/lotinfo_props_edit.php");?>
