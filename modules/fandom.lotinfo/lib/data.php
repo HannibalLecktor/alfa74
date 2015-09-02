@@ -10,16 +10,38 @@ namespace Fandom\Lotinfo;
 
 class Data
 {
-    $tmpDir = $_SERVER["DOCUMENT_ROOT"].$config['tmpDir'];
-    $config['xmlDir'] = $_SERVER["DOCUMENT_ROOT"].$config['xmlDir'];
-    $xml_file = $config['xmlFile'];
-    $log_file = $_SERVER["DOCUMENT_ROOT"].$config['logFile'];
-    $apiUrl = $config['apiUrl'];
-    $errors = '';
-    $message = '';
-    $email_text = '';
+    private $arParams = array(
+        'TMP_DIR' => "dir",
+        'XML_DIR' => "dir",
+        'XML_FILE' => "",
+        'LOG_FILE' => "dir",
+        'API_URL' => "",
+        'GET_PARAMS' => ""
+    );
+    private $fileAppend = FILE_APPEND;
+    public $errors = false;
+    public $message = '';
+    static private $MODULE_NAME = "fandom.lotinfo";
+    static private $GET_PARAM_OBJECT = '&objectType%3D';
 
-    public function __construct() {
+    public function __construct($docRoot) {
+        foreach ($this->arParams as $key=>$value) {
+            $paramValue = COption::GetOptionString(self::$MODULE_NAME, $key);
+
+            if (!$paramValue) {
+                $this->errors = Helper::boldColorText("Not value for {$key}", "red");
+            } elseif ($value == "dir") {
+                $this->arParams[$key] = $docRoot . $paramValue;
+            } else {
+                $this->arParams[$key];
+            }
+        }
+
+        if ($this->errors)
+            throw new Exception($this->errors);
+    }
+
+    public function get() {
 
     }
 }
