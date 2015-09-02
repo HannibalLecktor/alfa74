@@ -1,6 +1,5 @@
 <?
-echo "ddfg";
-die();
+
 $_SERVER["DOCUMENT_ROOT"] = exec("cd ../../; pwd");
 
 if (is_dir("")) {
