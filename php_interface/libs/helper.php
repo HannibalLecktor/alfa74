@@ -101,5 +101,13 @@ class Helper {
         return false;
     }
 
+    public static function boldColorText ($msg = false, $color = "") {
+        $response = "";
 
+        if (!$msg) {
+            $response = "<b style='color:{}'>{$msg}</b>";
+        }
+
+        return $response;
+    }
 }
