@@ -94,12 +94,13 @@ if($REQUEST_METHOD=="POST" && strlen($Update.$Apply.$RestoreDefaults)>0 && check
     }
     else
     {
-        foreach($arAllOptions as $arOption)
+        foreach($arAllOptions['settings'] as $arOption)
         {
             $name=$arOption[0];
             $val=$_REQUEST[$name];
             if($arOption[2][0]=="checkbox" && $val!="Y")
                 $val="N";
+
             COption::SetOptionString(ADMIN_MODULE_NAME, $name, $val, $arOption[1]);
         }
     }

@@ -11,7 +11,7 @@ CModule::AddAutoloadClasses(
     '',
     array(
         'Helper' => '/local/php_interface/libs/helper.php',
-//        'EventManager' => '/local/php_interface/EventManager.php',
+        'CDataXML' => '/bitrix/modules/main/classes/general/xml.php',
 //        'Common' => '/local/php_interface/common.php',
 //        'Registry' => '/local/php_interface/include/registry.php',
     )
