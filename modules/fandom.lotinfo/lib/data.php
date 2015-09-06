@@ -20,7 +20,6 @@ class Data
         'API_KEY' => '',
         'API_CMD' => ''
     );
-    private $fileAppend = FILE_APPEND;
     public $errors = "";
     public $message = '';
     static private $MODULE_NAME = "fandom.lotinfo";
@@ -46,8 +45,15 @@ class Data
             }
         }
 
-        if (!empty($this->errors))
-            throw new Exception($this->errors);
+        if (!empty($this->errors)) {
+            $logFile = $this->arParams['LOG_FILE'];
+            if ($logFile == 'dir')
+                $logFile = $docRoot . '/local/logs/lot_info';
+
+            file_put_contents($this->errors, $logFile, FILE_APPEND);
+
+            throw new \Exception($this->errors);
+        }
     }
 
     public function get()
