@@ -82,9 +82,12 @@ class Parser
     }
 
     private function getArImage($images){
+        //\Helper::pR($images);
         $arImage = array();
         foreach ($images as $arImg){
-            $img = CFile::MakeFileArray($arImg);
+            $img = \CFile::MakeFileArray($arImg);
+            //\Helper::pR($img);
+            //die();
             if($img['type'] != 'application/octet-stream')
                 $arImage[] = $img;
         }
@@ -132,6 +135,7 @@ class Parser
     private function getProps($iblock_id, $arItem, $typeOfTransaction, $new, $arProps)
     {
         $props = '';
+        //\Helper::pR($arItem);
 
         foreach ($this->iblockProps as $key=>$arProp) {
             switch ($key) {
@@ -315,7 +319,7 @@ class Parser
             $this->newSections[$sectionName] = $id;
             return $id;
         }else{
-            $this->errors .= \Helper::boldColorText('Добавление раздела новостроек ' . $sectionName . ' не удалось((( - ' . $newSection->LAST_ERROR, 'red');
+            $this->errors .= \Helper::boldColorText('Добавление раздела новостроек:' . $sectionName . ' не удалось((( - ' . $newSection->LAST_ERROR, 'red');
             return false;
         }
     }
@@ -476,13 +480,10 @@ class Parser
                     $new,
                     $arProps
                 );
-                //\Helper::pR($arProps);
                 $city = $arItem[$arProps['PROP_CITY']];
                 if (empty($arItem[$arProps['PROP_STREET']])) {
                     $name = $city;
                 } else {
-                    // Search Street By ID
-                    //$name = $this->getStreetName($arItem[$arProps['PROP_STREET']]);
                     $name = $arItem[$arProps['PROP_STREET']];
                     if (!$name) {
                         $this->redError(
@@ -493,9 +494,6 @@ class Parser
                         $name .= ', '.$arItem[$arProps['PROP_HOME']];
                     }
                 }
-
-                //echo $name;
-                //die();
 
                 if ($arItem[$arProps['SECTION_NAME']]) {
                     $iblockSectionID = $this->getSectionID($sectionID, $arItem[$arProps['SECTION_NAME']], $iblockID);
@@ -510,12 +508,7 @@ class Parser
                     'PROPERTY_VALUES' => $props,
                 );
 
-                //\Helper::pR($props);
-                //die();
-
-
                 if(array_key_exists($itemXmlID, $existsElements)){
-                    //$this->delFile($existsElements[$itemXmlID]['ID'], $arObject['IBLOCK_ID']);
                     if($three_d = $this->get3D($existsElements[$itemXmlID]['ID'], $iblockID)){
                         $arFields['PROPERTY_VALUES'][$three_d['key']] = $three_d['value'];
                     }
@@ -528,6 +521,9 @@ class Parser
         } else {
             $this->redError($file.": ".json_last_error_msg().". msgID: ".json_last_error());
         }
-        //unlink($file);
+
+        if ($this->arParams['DEBUG'] == 'N') {
+            unlink($file);
+        }
     }
 }
