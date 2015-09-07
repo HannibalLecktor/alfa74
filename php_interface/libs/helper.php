@@ -104,8 +104,8 @@ class Helper {
     public static function boldColorText ($msg = false, $color = "") {
         $response = "";
 
-        if (!$msg) {
-            $response = "<b style='color:{}'>{$msg}</b>";
+        if ($msg) {
+            $response = "<b style='color:{$color}'>{$msg}</b><br />";
         }
 
         return $response;

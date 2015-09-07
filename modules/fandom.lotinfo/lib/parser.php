@@ -10,7 +10,7 @@ namespace Fandom\Lotinfo;
 
 class Parser
 {
-    private $arParams = array(
+    public $arParams = array(
         'TMP_DIR' => 'dir',
         'XML_DIR' => 'dir',
         'XML_FILE' => '',
@@ -22,46 +22,49 @@ class Parser
     static private $MODULE_NAME = 'fandom.lotinfo';
     private $objType = '';
     private $transactionType = '';
+    private $iblockProps = [];
 
     public function __construct($docRoot, $objType, $transactionType)
     {
-        foreach ($this->arParams as $key=>$value) {
-            $paramValue = \COption::GetOptionString(self::$MODULE_NAME, $key);
+        if (!$objType || !$transactionType) {
+            $this->errors .= \Helper::boldColorText("Не указан тип недвижимости или тип сделки", "red");
+        } else {
+            $this->objType = $objType;
+            $this->transactionType = $transactionType;
 
-            if (!$paramValue) {
-                $this->errors .= \Helper::boldColorText("Not value for {$key}", "red");
-            } elseif ($value == "dir") {
-                $this->arParams[$key] = $docRoot . $paramValue;
-                if ($key != 'LOG_FILE') {
-                    if (!is_dir($this->arParams[$key])) {
+            $this->message .= \Helper::boldColorText(
+                'Parsing type: ' . $transactionType . ' Object: ' . $objType, 'green'
+            );
+        }
+
+        if (empty($this->errors)) {
+            foreach ($this->arParams as $key=>$value) {
+                $paramValue = \COption::GetOptionString(self::$MODULE_NAME, $key);
+                if (!$paramValue) {
+                    $this->errors .= \Helper::boldColorText("Not value for {$key}", "red");
+                } elseif ($value == "dir") {
+                    $this->arParams[$key] = $docRoot . $paramValue;
+                    if (!is_dir($this->arParams[$key]) && $key != 'LOG_FILE') {
                         if (!mkdir($this->arParams[$key])) {
                             $this->errors .= \Helper::boldColorText("Dir {$this->arParams[$key]} is absent", "red");
                         }
                     }
+                } else {
+                    $this->arParams[$key] = $paramValue;
                 }
-            } else {
-                $this->arParams[$key] = $paramValue;
             }
-        }
 
-        $tmpFiles = array_diff(scandir($this->arParams['TMP_DIR']), ['..', '.']);
-        if (empty($tmpFiles))
-            $this->errors = \Helper::boldColorText("Tmp files is absent", "red");
-
-        if (!$objType || !$transactionType)
-            $this->errors = \Helper::boldColorText("Не указан тип недвижимости или тип сделки", "red");
-        else {
-            $this->objType = $objType;
-            $this->transactionType = $transactionType;
+            $tmpFiles = array_diff(scandir($this->arParams['TMP_DIR']), ['..', '.']);
+            if (empty($tmpFiles))
+                $this->errors .= \Helper::boldColorText("Tmp dir {$this->arParams['TMP_DIR']} is empty", "red");
         }
 
         if (!empty($this->errors)) {
             $logFile = $this->arParams['LOG_FILE'];
-            if ($logFile == 'dir')
-                $logFile = $docRoot . '/local/logs/lot_info';
-
+            if ($logFile == '') {
+                $logFile = $docRoot . '/local/logs/lot_info.html';
+            }
             file_put_contents($this->errors, $logFile, FILE_APPEND);
-
             throw new \Exception($this->errors);
         }
 
@@ -69,12 +72,12 @@ class Parser
     }
 
     private function addElement($arFields){
-        $el = new CIBlockElement;
+        $el = new \CIBlockElement;
         if($elID = $el->Add($arFields)){
-            $this->message .= "<b style='color: green'>Елемент - <{$arFields['XML_ID']}> успешно добавлен<b><br/>";
+            $this->message .= \Helper::boldColorText("Елемент - <{$arFields['XML_ID']}> успешно добавлен", 'red');
         }else{
             $err = "Добавление элемента <{$arFields['XML_ID']}> не удалось((( - {$el->LAST_ERROR}";
-            $this->errors = \Helper::boldColorText($err, "red");
+            $this->errors .= \Helper::boldColorText($err, "red");
         }
     }
 
@@ -96,7 +99,7 @@ class Parser
             'PROPERTY_ID' => $prop_id
         );
 
-        $ob = CIBlockPropertyEnum::GetList(array(), array_merge($arFIlter, $fIlter));
+        $ob = \CIBlockPropertyEnum::GetList(array(), array_merge($arFIlter, $fIlter));
         if ($res = $ob->Fetch()) {
             return $res['ID'];
         } elseif ($fIlter['VALUE']) {
@@ -126,23 +129,21 @@ class Parser
         return false;
     }
 
-    private function getProps($iblock_id, $arItem, $typeOfTransaction, $lotInfoKey, $new, $arProps)
+    private function getProps($iblock_id, $arItem, $typeOfTransaction, $new, $arProps)
     {
         $props = '';
 
-        foreach ($this->iblockProps[$iblock_id] as $key=>$arProp) {
+        foreach ($this->iblockProps as $key=>$arProp) {
             switch ($key) {
                 case 'PROP_IMAGES':
                     if ($new)
                         $props[$arProp] = $this->getArImage($arItem[$arProps[$key]]);
                     break;
-                case 'PROP_FLOOR':
-                case 'PROP_ROOM_COUNT':
                 case 'PROP_TYPE_OF_HOME':
 
                     if ($key == 'PROP_TYPE_OF_HOME') {
                         $arFilter = array(
-                            'VALUE' => iconv('utf-8', 'windows-1251', $arItem[$arProps[$key]]).'%'
+                            'VALUE' => $arItem[$arProps[$key]].'%'
                         );
                     } else {
                         $arFilter = array(
@@ -163,32 +164,23 @@ class Parser
                     );
                     break;
                 case 'PROP_TYPE_OF_APARTMENT':
-                    if ($iblock_id == 30 || $iblock_id == 38) {
-                        if ($lotInfoKey == 3) {
-                            $xmlID = 'apartment';
-                        } elseif ($lotInfoKey == 5) {
-                            $xmlID = 'rooms';
-                        }
                         $props[$arProp] = $this->getEnumIdByFilter(
                             $iblock_id,
                             $this->iblockProps[$iblock_id][$key],
-                            array(
-                                'XML_ID' => $xmlID
-                            )
+                            []
                         );
-                    }
                     break;
                 case 'PROP_INFO':
                     $props[$arProp] = array(
                         "VALUE" => array(
-                            'TEXT' => iconv('utf-8', 'windows-1251', $arItem[$arProps[$key]]),
+                            'TEXT' => $arItem[$arProps[$key]],
                             "TYPE" => 'html'
                         )
                     );
                     break;
                 default:
                     if ($key == 'PROP_NAME_OF_REILTOR' && !empty($arItem[$arProps[$key]]))
-                        $value = iconv('utf-8', 'windows-1251', $arItem[$arProps[$key]]);
+                        $value = $arItem[$arProps[$key]];
                     else
                         $value = $arItem[$arProps[$key]];
 
@@ -208,7 +200,6 @@ class Parser
 
         $arFilter = array(
             'IBLOCK_ID' => $iblockId,
-            'SECTION_ID' => $sectionId,
             'XML_ID' => $xml,
         );
 
@@ -231,9 +222,9 @@ class Parser
         $el = new \CIBlockElement;
 
         if($el->Update($id, $arFields)){
-            $this->message .= "<span style='color: green'>Елемент - <{$arFields['XML_ID']}> успешно Обновлен<span><br/>";
+            $this->message .= \Helper::boldColorText("Елемент - <{$arFields['XML_ID']}> успешно Обновлен", 'red');
         }else{
-            $this->error .= "<b style='color:red'>Не удалось обновить Елемент <{$arFields['XML_ID']}>((( - {$el->LAST_ERROR}</span><br/>";
+            $this->errors .= \Helper::boldColorText("Не удалось обновить Елемент <{$arFields['XML_ID']}>((( - {$el->LAST_ERROR}", 'red');
         }
     }
 
@@ -288,7 +279,7 @@ class Parser
 
     private function get3D($item_id, $iblock_id){
 
-        $ob = CIBlockElement::GetProperty($iblock_id, $item_id, array(),array('CODE' => 'three_d'));
+        $ob = \CIBlockElement::GetProperty($iblock_id, $item_id, array(),array('CODE' => 'three_d'));
 
         if($res = $ob->Fetch()){
             $ar3d['key'] = $res['ID'];
@@ -298,28 +289,10 @@ class Parser
             return false;
     }
 
-    private function getNewSections(){
+    private function addNewSection($sectionID, $sectionName, $iblockID){
 
-        $res = array();
-
-        $arFilter = array(
-            'SECTION_ID' => self::NEW_SECTION,
-            'IBLOCK_ID' => self::NEW_IBLOCK,
-        );
-
-        $obSection = CIBlockSection::GetList(array(), $arFilter, false, array('ID', 'NAME'));
-
-        while($resSec = $obSection->Fetch()){
-            $res[$resSec['NAME']] = $resSec['ID'];
-        }
-
-        return $res;
-    }
-
-    private function addNewSection($sectionName){
-
-        $newSection = new CIBlockSection();
-        $sectionCode = CUtil::translit(
+        $newSection = new \CIBlockSection();
+        $sectionCode = \CUtil::translit(
             $sectionName,
             'ru',
             array(
@@ -330,8 +303,8 @@ class Parser
 
         $fields = array(
             'ACTIVE' => 'Y',
-            'IBLOCK_SECTION_ID' => self::NEW_SECTION,
-            'IBLOCK_ID' => self::NEW_IBLOCK,
+            'IBLOCK_SECTION_ID' => $sectionID,
+            'IBLOCK_ID' => $iblockID,
             'NAME' => $sectionName,
             'CODE' => $sectionCode,
         );
@@ -342,14 +315,14 @@ class Parser
             $this->newSections[$sectionName] = $id;
             return $id;
         }else{
-            $this->error .= "<b style='color:red'>Добавление раздела новостроек '".$sectionName."' не удалось((( - ".$newSection->LAST_ERROR."</span><br/>";
-            return self::NEW_SECTION;
+            $this->errors .= \Helper::boldColorText('Добавление раздела новостроек ' . $sectionName . ' не удалось((( - ' . $newSection->LAST_ERROR, 'red');
+            return false;
         }
     }
 
     private function redError($err)
     {
-        $this->error .= \Helper::boldColorText($err, 'red');
+        $this->errors .= \Helper::boldColorText($err, 'red');
     }
 
     private function getSettingsSectionID () {
@@ -388,9 +361,9 @@ class Parser
         );
 
         while ($arProps = $ob->fetch()) {
-            $value = ($arProps['PROP_ID'])?: $arProps['FIELD_ID'];
-            if ($value)
-                $props[$arProps['LOTINFO_FIELD']] = $value;
+            $key = ($arProps['PROP_ID'])?: $arProps['FIELD_ID'];
+            if ($key)
+                $props[$key] = $arProps['LOTINFO_FIELD'];
 
         };
 
@@ -412,39 +385,66 @@ class Parser
                 'select' => [
                     'NAME',
                     'CODE',
+                    'ID'
                 ]
             ]
         );
 
         while ($props = $propsOb->fetch()) {
-            $arProps[$props['CODE']] = $props['NAME'];
+            $arProps[$props['CODE']] = $props['ID'];
+        }
+
+        return $arProps;
+    }
+
+    private function getSectionID($sectionID, $sectionName, $iblockID)
+    {
+        $obSection = \Bitrix\Iblock\SectionTable::getList(
+            [
+                'filter' => [
+                    'IBLOCK_SECTION_ID' => $sectionID,
+                    'IBLOCK_ID' => $iblockID,
+                    'NAME' => $sectionName
+                ],
+                'select' => [
+                    'ID',
+                    'NAME',
+                ]
+            ]
+        );
+
+        if ($resSec = $obSection->Fetch()){
+            return $resSec['ID'];
+        } else {
+            return $this->addNewSection($sectionID, $sectionName, $iblockID);
         }
     }
 
     public function importData()
     {
-        $this->message = \Helper::boldColorText(
-            'Parsing type: ' . $this->transactionType . ' Object: ' . $this->objType, 'green'
-        );
-        $file = $this->arParams['TMP_DIR'] . $this->objType . '.json';
-        $iblockID = \COption::GetOptionInt(ADMIN_MODULE_NAME, 'IBLOCK_ID');
+        $file = $this->arParams['TMP_DIR'] . "/" . $this->objType . ".json";
+        $iblockID = \COption::GetOptionInt(self::$MODULE_NAME, 'IBLOCK_ID');
         $sectionID = $this->getSettingsSectionID();
         $arProps = $this->getPropsCompliance();
 
         if (!file_exists($file)) {
-            $this->errors = \Helper::boldColorText("File {$file} is absent", "red");
+            $this->errors .= \Helper::boldColorText("File {$file} is absent", "red");
             return false;
         }
 
         if (!$iblockID) {
-            $this->errors = \Helper::boldColorText("Не указан ИД инфоблока в настройках модуля", "red");
+            $this->errors .= \Helper::boldColorText("Не указан ИД инфоблока в настройках модуля", "red");
             return false;
         } else {
-            $iblockProps = $this->getIblockProps($iblockID);
+            $this->iblockProps = $this->getIblockProps($iblockID);
+            if (empty($this->iblockProps)) {
+                $this->errors .= \Helper::boldColorText("Не выбран список свойств инфоблока", "red");
+                return false;
+            }
         }
 
         if (!$sectionID) {
-            $this->errors = \Helper::boldColorText(
+            $this->errors .= \Helper::boldColorText(
                 "Не указан ИД раздела настройках модуля для типа недвижимости: {$this->transactionType},
                 Ид типа недвижимости: {$this->objType}", "red"
             );
@@ -452,10 +452,10 @@ class Parser
         }
 
         if (!$arProps) {
-            $this->errors = \Helper::boldColorText("Не указаны соответсвия свойств", "red");
+            $this->errors .= \Helper::boldColorText("Не указаны соответсвия свойств", "red");
             return false;
-        } elseif ($arProps['XML_ID']) {
-            $this->errors = \Helper::boldColorText("Не указано соответсвие для поле XML_ID", "red");
+        } elseif (!$arProps['XML_ID']) {
+            $this->errors .= \Helper::boldColorText("Не указано соответсвие для поле XML_ID", "red");
             return false;
         }
 
@@ -466,50 +466,53 @@ class Parser
             if ($this->arParams['DEBUG'] == 'N') {
                 $this->deleteItems($existsElements, $this->objType, $iblockID, $sectionID);
             }
-
             foreach ($arResult as $arItem) {
-
                 $itemXmlID = $arItem[$arProps['XML_ID']];
                 $new = !array_key_exists($itemXmlID, $existsElements)?: false;
                 $props = $this->getProps(
                     $iblockID,
                     $arItem,
-                    $this->objType,
                     $this->transactionType,
                     $new,
                     $arProps
                 );
-                $city = iconv('utf-8', 'windows-1251', $arItem[$arProps['PROP_CITY']]);
+                //\Helper::pR($arProps);
+                $city = $arItem[$arProps['PROP_CITY']];
                 if (empty($arItem[$arProps['PROP_STREET']])) {
                     $name = $city;
                 } else {
                     // Search Street By ID
                     //$name = $this->getStreetName($arItem[$arProps['PROP_STREET']]);
-                    $name = iconv('utf-8', 'windows-1251', $arItem[$arProps['PROP_STREET']]);
-
+                    $name = $arItem[$arProps['PROP_STREET']];
                     if (!$name) {
                         $this->redError(
-                            "Не удалось найти улицу ID: {$arItem[$arProps['PROP_STREET']]},
-                                        город: {$city}"
+                            "Не удалось найти улицу ID: {$arItem[$arProps['PROP_STREET']]}, город: {$city}"
                         );
-
                         $name = $city;
                     } elseif (!empty($arItem[$arProps['PROP_HOME']])) {
                         $name .= ', '.$arItem[$arProps['PROP_HOME']];
                     }
                 }
 
+                //echo $name;
+                //die();
+
+                if ($arItem[$arProps['SECTION_NAME']]) {
+                    $iblockSectionID = $this->getSectionID($sectionID, $arItem[$arProps['SECTION_NAME']], $iblockID);
+                }
+
                 $arFields = array(
                     'XML_ID' => $itemXmlID,
                     'NAME' => $name,
                     'IBLOCK_ID' => $iblockID,
-                    'IBLOCK_SECTION_ID' => $sectionID,
+                    'IBLOCK_SECTION_ID' => ($iblockSectionID)?: $sectionID,
                     'ACTIVE' => 'Y',
                     'PROPERTY_VALUES' => $props,
                 );
 
-                //Helper::pR($arFields);
+                //\Helper::pR($props);
                 //die();
+
 
                 if(array_key_exists($itemXmlID, $existsElements)){
                     //$this->delFile($existsElements[$itemXmlID]['ID'], $arObject['IBLOCK_ID']);
@@ -519,13 +522,12 @@ class Parser
                     $this->updateElement($arFields, $existsElements[$itemXmlID]['ID']);
                 }else
                     $this->addElement($arFields);
-            }
 
+                //die();
+            }
         } else {
             $this->redError($file.": ".json_last_error_msg().". msgID: ".json_last_error());
         }
-
-        unlink($file);
-
+        //unlink($file);
     }
 }
