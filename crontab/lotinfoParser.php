@@ -20,18 +20,18 @@ try {
 
     $pars = $parsing->importData();
     $logFile = $parsing->arParams['LOG_FILE'];
-    $errors = '';
-    $messages = '';
+    $text = '';
     if (!empty($parsing->errors)) {
         $errors = \Helper::boldColorText("Errors: ", "black");
-        file_put_contents($logFile, $errors . $parsing->errors, FILE_APPEND);
+        $text .= $errors . $parsing->errors;
     }
     if (!empty($parsing->message)) {
         $messages = \Helper::boldColorText("Messages: ", "black");
-        file_put_contents($logFile, $messages . $parsing->message, FILE_APPEND);
+        $text .= $messages . $parsing->message;
     }
 
-    mail("fans7288@gmail.com", "parsing", $errors . $messages);
+    file_put_contents($logFile, $text, FILE_APPEND);
+    mail("fans7288@gmail.com", "parsing", $text);
 } catch (Exception $e) {
     echo $e->getMessage();
 }
