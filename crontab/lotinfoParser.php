@@ -20,6 +20,8 @@ try {
 
     $pars = $parsing->importData();
     $logFile = $parsing->arParams['LOG_FILE'];
+    $errors = '';
+    $messages = '';
     if (!empty($parsing->errors)) {
         $errors = \Helper::boldColorText("Errors: ", "black");
         file_put_contents($logFile, $errors . $parsing->errors, FILE_APPEND);
@@ -28,6 +30,8 @@ try {
         $messages = \Helper::boldColorText("Messages: ", "black");
         file_put_contents($logFile, $messages . $parsing->message, FILE_APPEND);
     }
+
+    mail("fans7288@gmail.com", "parsing", $errors . $messages);
 } catch (Exception $e) {
     echo $e->getMessage();
 }

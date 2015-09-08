@@ -65,6 +65,7 @@ class Parser
                 $logFile = $docRoot . '/local/logs/lot_info.html';
             }
             file_put_contents($this->errors, $logFile, FILE_APPEND);
+
             throw new \Exception($this->errors);
         }
 
