@@ -213,10 +213,25 @@ class Parser
             'ID',
             'XML_ID',
             'NAME',
+            'PROP_IMAGES'
         );
-
+        /*$ob = \Bitrix\Iblock\ElementTable::getList(
+            [
+                'filter' => [
+                    'IBLOCK_ID' => $iblockId,
+                    'XML_ID' => $xml,
+                ],
+                'select' => [
+                    'IBLOCK_ID',
+                    'ID',
+                    'XML_ID',
+                    'NAME',
+                    'PROPERTY_PROP_IMAGES'
+                ]
+            ]
+        );*/
         $ob = \CIBlockElement::GetList(array('SORT'=>'ASC'), $arFilter, false, false, $arSelect);
-        while ($res = $ob->GetNext()) {
+        while ($res = $ob->fetch()) {
             $result[$res['XML_ID']] = $res;
         }
 
@@ -227,7 +242,7 @@ class Parser
         $el = new \CIBlockElement;
 
         if($el->Update($id, $arFields)){
-            $this->message .= \Helper::boldColorText("Елемент - <{$arFields['XML_ID']}> успешно Обновлен", 'red');
+            $this->message .= \Helper::boldColorText("Елемент - <{$arFields['XML_ID']}> успешно Обновлен", 'green');
         }else{
             $this->errors .= \Helper::boldColorText("Не удалось обновить Елемент <{$arFields['XML_ID']}>((( - {$el->LAST_ERROR}", 'red');
         }
@@ -474,11 +489,16 @@ class Parser
             foreach ($arResult as $arItem) {
                 $itemXmlID = $arItem[$arProps['XML_ID']];
                 $new = !array_key_exists($itemXmlID, $existsElements)?: false;
+                if (!$new && empty($existsElements[$itemXmlID]['PROPERTY_PROP_IMAGES_VALUE'])) {
+                    $needImages = true;
+                } elseif (!$new && !empty($existsElements[$itemXmlID]['PROPERTY_PROP_IMAGES_VALUE'])) {
+                    $needImages = false;
+                }
                 $props = $this->getProps(
                     $iblockID,
                     $arItem,
                     $this->transactionType,
-                    $new,
+                    $needImages,
                     $arProps
                 );
                 $city = $arItem[$arProps['PROP_CITY']];
