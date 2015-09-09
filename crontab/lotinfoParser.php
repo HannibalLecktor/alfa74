@@ -31,7 +31,7 @@ try {
     }
 
     file_put_contents($logFile, $text, FILE_APPEND);
-    mail("fans7288@gmail.com", "parsing", $text);
+    Lotinfo\Common::sendMail($text, true);
 } catch (Exception $e) {
     echo $e->getMessage();
 }
