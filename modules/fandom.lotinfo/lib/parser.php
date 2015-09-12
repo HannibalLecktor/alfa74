@@ -75,15 +75,14 @@ class Parser
     private function addElement($arFields){
         $el = new \CIBlockElement;
         if($elID = $el->Add($arFields)){
-            $this->message .= \Helper::boldColorText("Елемент - <{$arFields['XML_ID']}> успешно добавлен", 'red');
+            $this->message .= \Helper::boldColorText("Елемент - <{$arFields['XML_ID']}> успешно добавлен", 'green');
         }else{
             $err = "Добавление элемента <{$arFields['XML_ID']}> не удалось((( - {$el->LAST_ERROR}";
             $this->errors .= \Helper::boldColorText($err, "red");
         }
     }
 
-    private function getArImage($images){
-        //\Helper::pR($images);
+    private function getArImage($images, $xmlID){
         $arImage = array();
         foreach ($images as $arImg){
             $img = \CFile::MakeFileArray($arImg);
@@ -91,7 +90,16 @@ class Parser
             //die();
             if($img['type'] != 'application/octet-stream')
                 $arImage[] = $img;
+
+            if (!file_exists($img['tmp_name'])) {
+                $this->errors = \Helper::boldColorText("Не удалось добавить картинку {$arImg}, для элемента {$xmlID}", "red");
+            }
         }
+
+        /*if (!empty($arImage)) {
+            \Helper::pR($arImage);
+            die();
+        }*/
 
         return $arImage;
     }
@@ -142,7 +150,7 @@ class Parser
             switch ($key) {
                 case 'PROP_IMAGES':
                     if ($new)
-                        $props[$arProp] = $this->getArImage($arItem[$arProps[$key]]);
+                        $props[$arProp] = $this->getArImage($arItem[$arProps[$key]], $arItem['systemId']);
                     break;
                 case 'PROP_TYPE_OF_HOME':
 
@@ -498,9 +506,10 @@ class Parser
                     $iblockID,
                     $arItem,
                     $this->transactionType,
-                    $needImages,
+                    ($new)?: $needImages,
                     $arProps
                 );
+
                 $city = $arItem[$arProps['PROP_CITY']];
                 if (empty($arItem[$arProps['PROP_STREET']])) {
                     $name = $city;

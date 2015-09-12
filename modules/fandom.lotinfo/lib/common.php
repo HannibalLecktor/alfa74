@@ -31,7 +31,7 @@ class Common
         endforeach;
     }
 
-    static function sendMail($text, $debug){
+    static function sendMail($text, $theme, $debug){
         $message = "
             <htlm>
                 <head>
@@ -54,6 +54,6 @@ class Common
         $headers .= "To: {$to}\r\n";
         $headers .= "From: {self::FROM}}\r\n";
 
-        mail($to, self::THEME, $message, $headers);
+        mail($to, $theme, $message, $headers);
     }
 }

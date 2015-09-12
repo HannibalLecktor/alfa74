@@ -1,4 +1,4 @@
-<?
+$<?
 error_reporting(E_ALL);
 $_SERVER["DOCUMENT_ROOT"] = preg_replace('/\/\w*\/\w*\/\w*\.php$/', '', __FILE__);
 
@@ -31,7 +31,7 @@ try {
     }
 
     file_put_contents($logFile, $text, FILE_APPEND);
-    Lotinfo\Common::sendMail($text, true);
+    Lotinfo\Common::sendMail($text, "parsing", true);
 } catch (Exception $e) {
     echo $e->getMessage();
 }
